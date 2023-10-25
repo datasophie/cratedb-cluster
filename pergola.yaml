@@ -1,0 +1,72 @@
+---
+version: v1
+components:
+  - name: crate-master # create the master database node
+    docker:
+      image: crate # use the official crate image
+    ports:
+      - 4200 # dashboard port
+      - 5432 # database port
+    env:
+      # aggregate the hostname by component reference
+      - name: CRATE_HOST
+        component-ref: crate-master
+      # set the heap size
+      - name: CRATE_HEAP_SIZE
+        config-ref: crate_heap_size
+        value: 2g
+    ingresses:
+      # expose the dashboard
+      - host: database
+        path: "/"
+        port: 4200
+    storage:
+      # create a persistent volume for the database
+      - name: data
+        path: "/data/"
+        size: 20Gi
+    files:
+      # mount the configuration file
+      - path: "/crate/config/crate.yml"
+        config-ref: crate.yml
+    args:
+      # pass the crate command line arguments to configure the master node
+      - crate
+      - "-Ccluster.name=crate-cluster" # set the cluster name
+      - "-Ccluster.initial_master_nodes=$CRATE_HOST" # set the initial master node
+      - "-Cnode.name=$CRATE_HOST" # set the node name
+      - "-Cnode.data=true" # enable data storage
+      - "-Cdiscovery.seed_hosts=$CRATE_HOST" # set the seed host
+      - "-Cnetwork.host=_site_"
+  - name: crate-worker # create the worker nodes
+    docker:
+      image: crate
+    ports:
+      - 5432
+    env:
+      - name: CRATE_HOST
+        component-ref: crate-worker
+      # aggregate the seed hostname by component reference
+      - name: CRATE_SEED_HOST
+        component-ref: crate-master
+      - name: CRATE_HEAP_SIZE
+        config-ref: crate_heap_size
+        value: 2g
+    scaling:
+      # apply a scaling to the worker nodes
+      min: 3
+      max: 5
+    storage:
+      - name: data
+        path: "/data/"
+        size: 20Gi
+    files:
+      - path: "/crate/config/crate.yml"
+        config-ref: crate.yml
+    args:
+      - crate
+      - "-Ccluster.name=crate-cluster"
+      - "-Ccluster.initial_master_nodes=$CRATE_SEED_HOST" # set the expected initial master node
+      - "-Cnode.data=true" # enable data storage
+      - "-Cdiscovery.seed_hosts=$CRATE_SEED_HOST" # set the seed host
+      - "-Cnetwork.host=_site_"
