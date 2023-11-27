@@ -17,7 +17,7 @@ components:
         value: 2g
     ingresses:
       # expose the dashboard
-      - host: database
+      - host: dashboard
         path: "/"
         port: 4200
     storage:
