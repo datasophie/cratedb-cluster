@@ -1,7 +1,8 @@
 ---
 version: v1
 components:
-  - name: crate-master # create the master database node
+  # create the master database node
+  - name: crate-master
     docker:
       image: crate # use the official crate image
     ports:
@@ -20,6 +21,9 @@ components:
       - host: dashboard
         path: "/"
         port: 4200
+    resources:
+      cpu: 1000m
+      memory: 3Gi
     storage:
       # create a persistent volume for the database
       - name: data
@@ -38,7 +42,9 @@ components:
       - "-Cnode.data=true" # enable data storage
       - "-Cdiscovery.seed_hosts=$CRATE_HOST" # set the seed host
       - "-Cnetwork.host=_site_"
-  - name: crate-worker # create the worker nodes
+
+  # create the worker nodes
+  - name: crate-worker
     docker:
       image: crate
     ports:
@@ -52,6 +58,9 @@ components:
       - name: CRATE_HEAP_SIZE
         config-ref: crate_heap_size
         value: 2g
+    resources:
+      cpu: 1000m
+      memory: 3Gi
     scaling:
       # apply a scaling to the worker nodes
       min: 3
